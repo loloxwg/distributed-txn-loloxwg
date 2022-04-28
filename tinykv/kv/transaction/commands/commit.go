@@ -3,12 +3,11 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"reflect"
-
 	"github.com/pingcap-incubator/tinykv/kv/transaction/mvcc"
 	"github.com/pingcap-incubator/tinykv/proto/pkg/kvrpcpb"
 	"github.com/pingcap/log"
 	"go.uber.org/zap"
+	"reflect"
 )
 
 type Commit struct {
@@ -31,7 +30,12 @@ func (c *Commit) PrepareWrites(txn *mvcc.MvccTxn) (interface{}, error) {
 	// YOUR CODE HERE (lab1).
 	// Check if the commitTs is invalid, the commitTs must be greater than the transaction startTs. If not
 	// report unexpected error.
-	panic("PrepareWrites is not implemented for commit command")
+	log.Debug("Commit", zap.Uint64("startTs", c.startTs), zap.Uint64("c.request.StartVersion", c.request.StartVersion), zap.Uint64("txn.StartTS", txn.StartTS))
+	log.Debug("Commit", zap.Uint64("startTs", c.startTs), zap.Uint64("commitTs", commitTs))
+	if commitTs < c.startTs {
+		log.Error("commitTs is invalid", zap.Uint64("startTs", c.startTs), zap.Uint64("commitTs", commitTs))
+		return nil, fmt.Errorf("commitTs %d is less than startTs %d", commitTs, c.startTs)
+	}
 
 	response := new(kvrpcpb.CommitResponse)
 
@@ -53,7 +57,6 @@ func commitKey(key []byte, commitTs uint64, txn *mvcc.MvccTxn, response interfac
 	}
 
 	// If there is no correspond lock for this transaction.
-	panic("commitKey is not implemented yet")
 	log.Debug("commitKey", zap.Uint64("startTS", txn.StartTS),
 		zap.Uint64("commitTs", commitTs),
 		zap.String("key", hex.EncodeToString(key)))
@@ -62,13 +65,25 @@ func commitKey(key []byte, commitTs uint64, txn *mvcc.MvccTxn, response interfac
 		// Key is locked by a different transaction, or there is no lock on the key. It's needed to
 		// check the commit/rollback record for this key, if nothing is found report lock not found
 		// error. Also the commit request could be stale that it's already committed or rolled back.
-
+		write, _, err := txn.CurrentWrite(key)
+		response = &kvrpcpb.KeyError{Retryable: "true"}
+		if err != nil {
+			return nil, err
+		}
+		if write != nil {
+			if write.Kind == mvcc.WriteKindRollback {
+				response = &kvrpcpb.KeyError{Retryable: "false"}
+			}
+		}
 		respValue := reflect.ValueOf(response)
 		keyError := &kvrpcpb.KeyError{Retryable: fmt.Sprintf("lock not found for key %v", key)}
 		reflect.Indirect(respValue).FieldByName("Error").Set(reflect.ValueOf(keyError))
 		return response, nil
 	}
 
+	log.Debug("Commit a Write object to the DB", zap.Uint64("txn.startTS", txn.StartTS),
+		zap.Uint64("commitTs", commitTs),
+		zap.String("key", hex.EncodeToString(key)))
 	// Commit a Write object to the DB
 	write := mvcc.Write{StartTS: txn.StartTS, Kind: lock.Kind}
 	txn.PutWrite(key, commitTs, &write)
