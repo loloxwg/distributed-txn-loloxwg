@@ -65,16 +65,6 @@ func commitKey(key []byte, commitTs uint64, txn *mvcc.MvccTxn, response interfac
 		// Key is locked by a different transaction, or there is no lock on the key. It's needed to
 		// check the commit/rollback record for this key, if nothing is found report lock not found
 		// error. Also the commit request could be stale that it's already committed or rolled back.
-		write, _, err := txn.CurrentWrite(key)
-		response = &kvrpcpb.KeyError{Retryable: "true"}
-		if err != nil {
-			return nil, err
-		}
-		if write != nil {
-			if write.Kind == mvcc.WriteKindRollback {
-				response = &kvrpcpb.KeyError{Retryable: "false"}
-			}
-		}
 		respValue := reflect.ValueOf(response)
 		keyError := &kvrpcpb.KeyError{Retryable: fmt.Sprintf("lock not found for key %v", key)}
 		reflect.Indirect(respValue).FieldByName("Error").Set(reflect.ValueOf(keyError))

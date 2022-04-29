@@ -31,10 +31,27 @@ func (c *CheckTxnStatus) PrepareWrites(txn *mvcc.MvccTxn) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	panic("CheckTxnStatus is not implemented yet")
 	if lock != nil && lock.Ts == txn.StartTS {
 		if physical(lock.Ts)+lock.Ttl < physical(c.request.CurrentTs) {
 			// YOUR CODE HERE (lab1).
+			// You should check the lock's TTL and return the corresponding response.
+			/* rollback operations
+			txn.DeleteLock(key)
+			txn.DeleteValue(key)
+			log.Info("checkTxnStatus", zap.Uint64("startTs", c.startTs), zap.Uint64("currentTs", c.request.CurrentTs), zap.Uint64("lockTs", lock.Ts), zap.Uint64("ttl", lock.Ttl))
+			txn.PutWrite(key, lock.Ts, &mvcc.Write{
+				StartTS: lock.Ts,
+				Kind:    mvcc.WriteKindRollback,
+			})
+			*/
+			txn.Rollback(c.request.PrimaryKey, true)
+			//三种 txn 状态：
+			//locked: lock_ttl > 0
+			//commit: commit_version > 0
+			//roll back: lock_ttl == 0 && commit_version == 0
+			response.LockTtl = 0
+			response.Action = kvrpcpb.Action_TTLExpireRollback
+
 			// Lock has expired, try to rollback it. `mvcc.WriteKindRollback` could be used to
 			// represent the type. Try using the interfaces provided by `mvcc.MvccTxn`.
 			log.Info("checkTxnStatus rollback the primary lock as it's expired",
@@ -43,6 +60,7 @@ func (c *CheckTxnStatus) PrepareWrites(txn *mvcc.MvccTxn) (interface{}, error) {
 				zap.Uint64("txn.StartTS", txn.StartTS),
 				zap.Uint64("currentTS", c.request.CurrentTs),
 				zap.Uint64("physical(currentTS)", physical(c.request.CurrentTs)))
+			return response, nil
 		} else {
 			// Lock has not expired, leave it alone.
 			response.Action = kvrpcpb.Action_NoAction
@@ -56,13 +74,18 @@ func (c *CheckTxnStatus) PrepareWrites(txn *mvcc.MvccTxn) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	panic("CheckTxnStatus is not implemented yet")
+
 	if existingWrite == nil {
 		// YOUR CODE HERE (lab1).
 		// The lock never existed, it's still needed to put a rollback record on it so that
 		// the stale transaction commands such as prewrite on the key will fail.
 		// Note try to set correct `response.Action`,
 		// the action types could be found in kvrpcpb.Action_xxx.
+		txn.PutWrite(key, c.request.LockTs, &mvcc.Write{
+			StartTS: c.request.LockTs,
+			Kind:    mvcc.WriteKindRollback,
+		})
+		response.Action = kvrpcpb.Action_LockNotExistRollback
 
 		return response, nil
 	}

@@ -47,7 +47,6 @@ func rollbackKey(key []byte, txn *mvcc.MvccTxn, response interface{}) (interface
 		zap.Uint64("startTS", txn.StartTS),
 		zap.String("key", hex.EncodeToString(key)))
 
-	panic("rollbackKey is not implemented yet")
 	if lock == nil || lock.Ts != txn.StartTS {
 		// There is no lock, check the write status.
 		existingWrite, ts, err := txn.CurrentWrite(key)
@@ -61,9 +60,18 @@ func rollbackKey(key []byte, txn *mvcc.MvccTxn, response interface{}) (interface
 		// If the key has already been committed. This should not happen since the client should never send both
 		// commit and rollback requests.
 		// There is no write either, presumably the prewrite was lost. We insert a rollback write anyway.
+		//尝试插入回滚记录如果没有相应的记录，请使用`mvcc。WriteKindRollback`表示
+		//类型。此外，如果记录已回滚或提交，则该命令可能已过时。
+		//如果也没有写入，则可能预写入已丢失。无论如何，我们都要插入一个回滚写入。
+		//如果密钥已回滚，则无需执行任何操作。
+		//如果密钥已经提交。这种情况不应该发生，因为客户端永远不应该同时发送这两个消息
+		//提交和回滚请求。
+		//也没有写入，大概预写入丢失了。无论如何，我们都要插入一个回滚写入。
+
+		//We insert a rollback write anyway.
 		if existingWrite == nil {
 			// YOUR CODE HERE (lab1).
-
+			txn.Rollback(key, false)
 			return nil, nil
 		} else {
 			if existingWrite.Kind == mvcc.WriteKindRollback {

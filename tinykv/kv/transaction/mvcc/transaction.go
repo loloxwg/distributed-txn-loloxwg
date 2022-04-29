@@ -282,3 +282,14 @@ func (txn *MvccTxn) DeleteValue(key []byte) {
 		},
 	})
 }
+
+func (txn *MvccTxn) Rollback(key []byte, lock bool) {
+	txn.PutWrite(key, txn.StartTS, &Write{
+		StartTS: txn.StartTS,
+		Kind:    WriteKindRollback,
+	})
+	txn.DeleteValue(key)
+	if lock {
+		txn.DeleteLock(key)
+	}
+}
