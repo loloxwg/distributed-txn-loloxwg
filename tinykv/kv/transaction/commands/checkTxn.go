@@ -32,26 +32,9 @@ func (c *CheckTxnStatus) PrepareWrites(txn *mvcc.MvccTxn) (interface{}, error) {
 		return nil, err
 	}
 	if lock != nil && lock.Ts == txn.StartTS {
+		// 判断锁是否是过期的
 		if physical(lock.Ts)+lock.Ttl < physical(c.request.CurrentTs) {
 			// YOUR CODE HERE (lab1).
-			// You should check the lock's TTL and return the corresponding response.
-			/* rollback operations
-			txn.DeleteLock(key)
-			txn.DeleteValue(key)
-			log.Info("checkTxnStatus", zap.Uint64("startTs", c.startTs), zap.Uint64("currentTs", c.request.CurrentTs), zap.Uint64("lockTs", lock.Ts), zap.Uint64("ttl", lock.Ttl))
-			txn.PutWrite(key, lock.Ts, &mvcc.Write{
-				StartTS: lock.Ts,
-				Kind:    mvcc.WriteKindRollback,
-			})
-			*/
-			txn.Rollback(c.request.PrimaryKey, true)
-			//三种 txn 状态：
-			//locked: lock_ttl > 0
-			//commit: commit_version > 0
-			//roll back: lock_ttl == 0 && commit_version == 0
-			response.LockTtl = 0
-			response.Action = kvrpcpb.Action_TTLExpireRollback
-
 			// Lock has expired, try to rollback it. `mvcc.WriteKindRollback` could be used to
 			// represent the type. Try using the interfaces provided by `mvcc.MvccTxn`.
 			log.Info("checkTxnStatus rollback the primary lock as it's expired",
@@ -60,6 +43,22 @@ func (c *CheckTxnStatus) PrepareWrites(txn *mvcc.MvccTxn) (interface{}, error) {
 				zap.Uint64("txn.StartTS", txn.StartTS),
 				zap.Uint64("currentTS", c.request.CurrentTs),
 				zap.Uint64("physical(currentTS)", physical(c.request.CurrentTs)))
+			// 回滚操作 详细
+			//txn.DeleteLock(key)
+			//txn.DeleteValue(key)
+			//txn.PutWrite(key, lock.Ts, &mvcc.Write{
+			//	StartTS: lock.Ts,
+			//	Kind:    mvcc.WriteKindRollback,
+			//})
+			// 回滚操作 封装
+			txn.Rollback(c.request.PrimaryKey, true)
+
+			//三种 txn 状态：
+			//locked: lock_ttl > 0
+			//commit: commit_version > 0
+			//roll back: lock_ttl == 0 && commit_version == 0
+			response.LockTtl = 0
+			response.Action = kvrpcpb.Action_TTLExpireRollback //rollback
 			return response, nil
 		} else {
 			// Lock has not expired, leave it alone.
@@ -69,7 +68,7 @@ func (c *CheckTxnStatus) PrepareWrites(txn *mvcc.MvccTxn) (interface{}, error) {
 
 		return response, nil
 	}
-
+	//--------------------------------------------------------lock == nil------------------------------------------------------
 	existingWrite, commitTs, err := txn.CurrentWrite(key)
 	if err != nil {
 		return nil, err

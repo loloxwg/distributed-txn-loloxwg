@@ -71,6 +71,13 @@ func rollbackKey(key []byte, txn *mvcc.MvccTxn, response interface{}) (interface
 		//We insert a rollback write anyway.
 		if existingWrite == nil {
 			// YOUR CODE HERE (lab1).
+			// 回滚操作 详细
+			//txn.DeleteValue(key)
+			//txn.PutWrite(key, txn.StartTS, &mvcc.Write{
+			//	StartTS: txn.StartTS,
+			//	Kind:    mvcc.WriteKindRollback,
+			//})
+			// 回滚操作 封装
 			txn.Rollback(key, false)
 			return nil, nil
 		} else {

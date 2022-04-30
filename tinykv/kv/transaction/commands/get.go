@@ -24,6 +24,9 @@ func NewGet(request *kvrpcpb.GetRequest) Get {
 	}
 }
 
+// 读的时候看看有这样的锁存在吗，没锁就直接读最新的
+// 有锁会发生两种情况 1。能读到最新 2。读不到最新的 读不读的到 依赖于最终的committed ts 和 start ts 的大小
+
 func (g *Get) Read(txn *mvcc.RoTxn) (interface{}, [][]byte, error) {
 	key := g.request.Key
 	// g.request.Version or txn.StartTs log debug information
@@ -40,6 +43,7 @@ func (g *Get) Read(txn *mvcc.RoTxn) (interface{}, [][]byte, error) {
 			zap.String("key", hex.EncodeToString(key)), zap.Error(err))
 		return nil, nil, err
 	}
+	// 本次读请求事务的start ts 比 和锁的start ts 大 返回异常
 	if lock != nil && g.request.Version >= lock.Ts {
 		response.Error = &kvrpcpb.KeyError{
 			Locked: &kvrpcpb.LockInfo{

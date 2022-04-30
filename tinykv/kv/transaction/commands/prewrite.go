@@ -78,6 +78,7 @@ func (p *Prewrite) prewriteMutation(txn *mvcc.MvccTxn, mut *kvrpcpb.Mutation) (*
 		return nil, err
 	}
 	// key already written
+	//通过 MostRecentWrite 检查所有 key 的最新 Write，如果存在，且其 commitTs 大于当前事务的 startTs，说明存在 write conflict，终止操作。
 	if write != nil && p.request.StartVersion <= ts {
 		keyError := &kvrpcpb.KeyError{
 			Conflict: &kvrpcpb.WriteConflict{
