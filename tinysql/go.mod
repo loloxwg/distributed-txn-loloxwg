@@ -9,11 +9,10 @@ require (
 	github.com/cznic/y v0.0.0-20181122101901-b05e8c2e8d7b
 	github.com/go-sql-driver/mysql v0.0.0-20170715192408-3955978caca4
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/protobuf v1.3.4
+	github.com/golang/protobuf v1.5.3
 	github.com/google/btree v1.0.0
-	github.com/google/uuid v1.1.1
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.6.2
-	github.com/ngaut/log v0.0.0-20210830112240-0124ec040aeb // indirect
 	github.com/ngaut/pools v0.0.0-20180318154953-b7bc8c42aac7
 	github.com/pingcap-incubator/tinykv v0.0.0-20200320061650-f660f803e910
 	github.com/pingcap/check v0.0.0-20200212061837-5e12011dc712
@@ -29,10 +28,11 @@ require (
 	go.uber.org/atomic v1.6.0
 	go.uber.org/automaxprocs v1.2.0
 	go.uber.org/zap v1.14.0
-	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
-	golang.org/x/text v0.3.2
-	golang.org/x/tools v0.0.0-20200304193943-95d2e580d8eb
-	google.golang.org/grpc v1.25.1
+	golang.org/x/net v0.9.0
+	golang.org/x/text v0.9.0
+	golang.org/x/tools v0.7.0
+	google.golang.org/grpc v1.54.0
+	google.golang.org/grpc/examples v0.0.0-20230705174746-11feb0a9afd8 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
 
